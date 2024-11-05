@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /**
 * NOTA SOBRE LA LICENCIA DE USO DEL SOFTWARE
 *
