@@ -210,7 +210,7 @@ function tep_db_num_rows_biz($query)
 	$miObj->setParameter('Ds_Merchant_MerchantData',$ds_merchant_data);
 	$miObj->setParameter('Ds_Merchant_MerchantName',$ds_merchant_name);
 	$miObj->setParameter('Ds_Merchant_PayMethods', 'z');
-	$miObj->setParameter('Ds_Merchant_Module', 'zencart_bizum_3.0.1');
+	$miObj->setParameter('Ds_Merchant_Module', 'zencart_bizum_3.0.2');
 
 	//Datos de configuración
 	$version = getVersionClave();
