@@ -50,7 +50,11 @@ function tep_db_num_rows_biz($query)
      * @var int
      */
     public $order_status;
-
+    /**
+     * $sort_order is the order priority of this payment module when displayed
+     * @var int
+     */
+    public $sort_order;
 
 // class constructor
     function bizum() {
