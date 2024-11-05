@@ -1,23 +1,23 @@
 <?php
 /**
 * NOTA SOBRE LA LICENCIA DE USO DEL SOFTWARE
-* 
+*
 * El uso de este software está sujeto a las Condiciones de uso de software que
 * se incluyen en el paquete en el documento "Aviso Legal.pdf". También puede
 * obtener una copia en la siguiente url:
 * http://www.redsys.es/wps/portal/redsys/publica/areadeserviciosweb/descargaDeDocumentacionYEjecutables
-* 
+*
 * Redsys es titular de todos los derechos de propiedad intelectual e industrial
 * del software.
-* 
+*
 * Quedan expresamente prohibidas la reproducción, la distribución y la
 * comunicación pública, incluida su modalidad de puesta a disposición con fines
 * distintos a los descritos en las Condiciones de uso.
-* 
+*
 * Redsys se reserva la posibilidad de ejercer las acciones legales que le
 * correspondan para hacer valer sus derechos frente a cualquier infracción de
 * los derechos de propiedad intelectual y/o industrial.
-* 
+*
 * Redsys Servicios de Procesamiento, S.L., CIF B85955367
 */
 if(!function_exists("escribirLog")) {
@@ -40,7 +40,17 @@ function tep_db_num_rows_biz($query)
 
   class bizum {
     var $code, $title, $description, $enabled;
-	
+   /**
+     * $_check is used to check the configuration key set up
+     * @var int
+     */
+    protected $_check;
+    /**
+     * $order_status is the order status to set after processing the payment
+     * @var int
+     */
+    public $order_status;
+
 
 // class constructor
     function bizum() {
@@ -68,11 +78,11 @@ function tep_db_num_rows_biz($query)
 	  }
 	  else if(MODULE_PAYMENT_BIZUM_URL=="SIS"){
 		$this->form_action_url = "https://sis.redsys.es/sis/realizarPago/utf-8";
-	  }     
+	  }
     }
 
 // class methods
- 
+
     function javascript_validation() {
       return false;
     }
@@ -89,28 +99,28 @@ function tep_db_num_rows_biz($query)
     function confirmation() {
       return false;
     }
-	
-    function process_button() 
+
+    function process_button()
     {
       global $order, $language;
-      
+
       //DATOS PARA EL TPV
-	 	  
+
       //Merchant Data
       $ds_merchant_data=zen_session_id();
-      
+
       //Amount
-      $total=number_format($order->info['total'], 2);           
+      $total=number_format($order->info['total'], 2);
       $cantidad = round($total*$order->info['currency_value'],2);
       $cantidad = number_format($cantidad, 2, '.', '');
       $cantidad = preg_replace('/\./', '', $cantidad);
-      
+
 	  //Id_Pedido
 	  $numpedido = rand(10,10000);
-      
+
       //Nombre Com.
 	  $ds_merchant_name= MODULE_PAYMENT_BIZUM_NAMECOM;
-	  
+
 	  //Tipo MONEDA.
 	  if(MODULE_PAYMENT_BIZUM_MERCHANT_CURRENCY=='DOLAR'){
 		 $moneda = "840";
@@ -118,22 +128,22 @@ function tep_db_num_rows_biz($query)
 	  else {
 		 $moneda = "978"; //EURO POR DEFECTO
 	  }
-	  
+
 	  //Nombre Terminal.
       $terminal = MODULE_PAYMENT_BIZUM_TERMINAL;
       $trans = "0";
-	  
+
 	  //Idioma
-      $idioma_tpv = "0";        
+      $idioma_tpv = "0";
       if ($language=='english')
       {
         $idioma_tpv='002';
 	  }
-		
-	  //URL OK Y KO	
+
+	  //URL OK Y KO
       $ds_merchant_urlok=zen_href_link(FILENAME_CHECKOUT_SUCCESS, '', 'NONSSL');
       $ds_merchant_urlko=zen_href_link(FILENAME_LOGOFF, 'error_message=ERROR', 'NONSSL', true, false);
-	  
+
 	  //URL Respuesta ONLINE
 	  $home = explode('/', $_SERVER['REQUEST_URI']);
 	  $urltienda = "http://".$_SERVER['HTTP_HOST']."/".$home[1]."/bizum_process.php";
@@ -141,14 +151,14 @@ function tep_db_num_rows_biz($query)
 	  //Firma
       $clave256=MODULE_PAYMENT_BIZUM_ID_CLAVE256;
       $codigo=MODULE_PAYMENT_BIZUM_ID_COM;
-      
+
       $ds_product_description="";
       for($i=0; $i<sizeof($order->products); $i++){
       	$ds_product_description=$order->products[$i]["qty"]."x".$order->products[$i]["name"]."/";
       }
-      
+
       $ds_merchant_titular=$order->customer["firstname"]." ".$order->customer["lastname"];
-	  
+
 	$miObj = new RedsysAPI;
 	$miObj->setParameter("DS_MERCHANT_AMOUNT",$cantidad);
 	$miObj->setParameter("DS_MERCHANT_ORDER",strval($numpedido));
@@ -169,13 +179,13 @@ function tep_db_num_rows_biz($query)
 
 	//Datos de configuración
 	$version = getVersionClave();
-	
+
 	//Clave del comercio que se extrae de la configuración del comercio
 	// Se generan los parámetros de la petición
 	$request = "";
 	$paramsBase64 = $miObj->createMerchantParameters();
 	$signatureMac = $miObj->createMerchantSignature($clave256);
-	
+
 	$process_button_string =
 		zen_draw_hidden_field('Ds_SignatureVersion', $version) .
 		zen_draw_hidden_field('Ds_MerchantParameters', $paramsBase64) .
@@ -189,23 +199,23 @@ function tep_db_num_rows_biz($query)
 		$logActivo = MODULE_PAYMENT_BIZUM_LOG;
 		$valido = FALSE;
 		if (!empty( $_POST ) ) {//URL DE RESP. ONLINE
-			
+
 			$clave256=MODULE_PAYMENT_BIZUM_ID_CLAVE256;
 
 			/** Recoger datos de respuesta **/
 			$version     = $_POST["Ds_SignatureVersion"];
 			$datos    = $_POST["Ds_MerchantParameters"];
 			$firma_remota    = $_POST["Ds_Signature"];
-			
+
 			// Se crea Objeto
 			$miObj = new RedsysAPI;
-			
+
 			/** Se decodifican los datos enviados y se carga el array de datos **/
 			$decodec = $miObj->decodeMerchantParameters($datos);
 
 			/** Se calcula la firma **/
-			$firma_local = $miObj->createMerchantSignatureNotif($clave256,$datos);	
-			
+			$firma_local = $miObj->createMerchantSignatureNotif($clave256,$datos);
+
 			/** Extraer datos de la notificación **/
 			$total     = $miObj->getParameter('Ds_Amount');
 			$pedido    = $miObj->getParameter('Ds_Order');
@@ -213,10 +223,10 @@ function tep_db_num_rows_biz($query)
 			$moneda    = $miObj->getParameter('Ds_Currency');
 			$respuesta = $miObj->getParameter('Ds_Response');
 			$id_trans = $miObj->getParameter('Ds_AuthorisationCode');
-			
+
 			//Nuevas variables
 			$codigoOrig=MODULE_PAYMENT_BIZUM_ID_COM;
-			
+
 			if(checkRespuesta($respuesta)
 				&& checkMoneda($moneda)
 				&& checkFuc($codigo)
@@ -249,7 +259,7 @@ function tep_db_num_rows_biz($query)
 				escribirLog($idLog." -- El pedido con ID " . $pedido . " NO es válido.",$logActivo);
 				$valido = FALSE;
 			}
-			
+
 			if ($firma_local != $firma_remota || FALSE === $valido) {
 				//El proceso no puede ser completado, error de autenticación
 				escribirLog($idLog." -- La firma no es correcta.",$logActivo);
@@ -260,7 +270,7 @@ function tep_db_num_rows_biz($query)
 			$iresponse=(int)$respuesta;
 
 			if (($iresponse>=0) && ($iresponse<=100)) {
-				//after_Process();	
+				//after_Process();
 			} else {
 				if(!$this->mantener_pedido_ante_error_pago){
 					$_SESSION['cart']->reset(true);
@@ -279,10 +289,10 @@ function tep_db_num_rows_biz($query)
       	}
     }
 
-    function after_process() 
+    function after_process()
     {
 		global $db, $insert_id;
-	       
+
 		//Actualizamos el Status del pedido
 		$db->Execute("UPDATE " . TABLE_ORDERS  . " SET orders_status = ".MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID.",payment_method = 'Pago mediante Bizum',payment_module_code = 'bizum' WHERE orders_id = '".$insert_id."'");
 		$db->Execute("UPDATE " . TABLE_ORDERS_STATUS_HISTORY  . " SET orders_status_id = ".MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID." WHERE orders_id = '".$insert_id."'");
@@ -303,14 +313,14 @@ function tep_db_num_rows_biz($query)
       }
       return $this->_check;
     }
-	
+
 	function getCurrenciesInstalled(){
 		global $db;
 		$currencies = array();
 		$currency_query_raw = "select currencies_id, title, code, symbol_left, symbol_right, decimal_point, thousands_point, decimal_places, last_updated, value from " . TABLE_CURRENCIES . " order by title";
 		$currency = $db->Execute($currency_query_raw);
-		
-			
+
+
 		while (!$currency->EOF) {
 			$cInfo = new objectInfo($currency->fields);
 			array_push($currencies, $cInfo);
@@ -320,7 +330,7 @@ function tep_db_num_rows_biz($query)
 	}
 
     function install() {
-	  tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('Activar modulo Bizum', 'MODULE_PAYMENT_BIZUM_STATUS', 'True', 'Quiere aceptar pagos usando Bizum?', '6', '3', 'zen_cfg_select_option(array(\'True\', \'False\'), ', now())");	 
+	  tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('Activar modulo Bizum', 'MODULE_PAYMENT_BIZUM_STATUS', 'True', 'Quiere aceptar pagos usando Bizum?', '6', '3', 'zen_cfg_select_option(array(\'True\', \'False\'), ', now())");
 	  tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Nombre Comercio Bizum', 'MODULE_PAYMENT_BIZUM_NAMECOM', '', 'Nombre de comercio', '6', '4', now())");
       tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('FUC Comercio Bizum', 'MODULE_PAYMENT_BIZUM_ID_COM', '', 'Codigo de comercio proporcionado por la entidad bancaria', '6', '4', now())");
       tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Clave de Encriptacion (SHA-256)', 'MODULE_PAYMENT_BIZUM_ID_CLAVE256', '', 'Clave de encriptacion SHA-256 proporcionada por la entidad bancaria', '6', '4', now())");
@@ -338,7 +348,7 @@ function tep_db_num_rows_biz($query)
     }
 
     function keys() {
-      
+
 	  $claves = array();
 	  array_push($claves,
       'MODULE_PAYMENT_BIZUM_STATUS',
@@ -353,7 +363,7 @@ function tep_db_num_rows_biz($query)
       'MODULE_PAYMENT_BIZUM_SORT_ORDER',
 	  'MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID'
       );
-	  
+
 	  return $claves;
     }
   }
