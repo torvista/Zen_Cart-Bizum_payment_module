@@ -2,6 +2,15 @@
 
 declare(strict_types=1);
 /**
+ * Bizum Payment Module
+ *
+ * @copyright Copyright 2003-2023 Zen Cart Development Team
+ * @copyright Portions Copyright 2003 osCommerce
+ * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
+ * @updated 05/11/2024
+ */
+
+/**
 * NOTA SOBRE LA LICENCIA DE USO DEL SOFTWARE
 *
 * El uso de este software está sujeto a las Condiciones de uso de software que
@@ -41,41 +50,41 @@ function tep_db_num_rows_biz($query)
 }
 
   class bizum {
-      /**
-       * $_check is used to check the configuration key set up
-       * @var int
-       */
-      protected $_check;
-      /**
-       * $code determines the internal 'code' name used to designate "this" payment module
-       * @var string
-       */
-      public $code;
-      /**
-       * $description is a soft name for this payment method
-       * @var string
-       */
-      public $description;
-      /**
-       * $enabled determines whether this module shows or not... during checkout.
-       * @var bool
-       */
-      public $enabled;
-      /**
-       * $order_status is the order status to set after processing the payment
-       * @var int
-       */
-      public $order_status;
-      /**
-       * $title is the displayed name for this order total method
-       * @var string
-       */
-      public $title;
-      /**
-       * $sort_order is the order priority of this payment module when displayed
-       * @var int
-       */
-      public $sort_order;
+    /**
+     * $_check is used to check the configuration key set up
+     * @var int
+     */
+    protected $_check;
+    /**
+     * $code determines the internal 'code' name used to designate "this" payment module
+     * @var string
+     */
+    public $code;
+    /**
+     * $description is a soft name for this payment method
+     * @var string
+     */
+    public $description;
+    /**
+     * $enabled determines whether this module shows or not... during checkout.
+     * @var bool
+     */
+    public $enabled;
+    /**
+     * $order_status is the order status to set after processing the payment
+     * @var int
+     */
+    public $order_status;
+    /**
+     * $title is the displayed name for this order total method
+     * @var string
+     */
+    public $title;
+    /**
+     * $sort_order is the order priority of this payment module when displayed
+     * @var int
+     */
+    public $sort_order;
 
     public $form_action_url, $logActivo, $mantener_pedido_ante_error_pago;
 
@@ -88,12 +97,14 @@ function tep_db_num_rows_biz($query)
       $this->description = MODULE_PAYMENT_BIZUM_TEXT_DESCRIPTION;
       $this->enabled = defined('MODULE_PAYMENT_BIZUM_STATUS') && MODULE_PAYMENT_BIZUM_STATUS == 'True';
       $this->sort_order = defined('MODULE_PAYMENT_BIZUM_SORT_ORDER') ? MODULE_PAYMENT_BIZUM_SORT_ORDER : null;
-      $this->mantener_pedido_ante_error_pago = defined('MODULE_PAYMENT_BIZUM_ERROR_PAGO') && (MODULE_PAYMENT_BIZUM_ERROR_PAGO == 'si');
-      $this->logActivo = defined('MODULE_PAYMENT_BIZUM_LOG') ? MODULE_PAYMENT_BIZUM_LOG : 'no';
+      if (null === $this->sort_order) return false;
 
 	  if (defined('MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID') && (int)MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID > 0) {
         $this->order_status = MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID;
       }
+
+      $this->mantener_pedido_ante_error_pago = defined('MODULE_PAYMENT_BIZUM_ERROR_PAGO') && (MODULE_PAYMENT_BIZUM_ERROR_PAGO == 'si');
+      $this->logActivo = defined('MODULE_PAYMENT_BIZUM_LOG') ? MODULE_PAYMENT_BIZUM_LOG : 'no';
 
       if (defined('MODULE_PAYMENT_BIZUM_URL') && MODULE_PAYMENT_BIZUM_URL === 'SIS-D'){
 	    $this->form_action_url = 'http://sis-d.redsys.es/sis/realizarPago/utf-8';
@@ -112,9 +123,37 @@ function tep_db_num_rows_biz($query)
           $this->enabled = false;
       }
 
+      if (is_object($order)) $this->update_status();
     }
 
 // class methods
+    function update_status() {
+      global $order, $db;
+
+      if ($this->enabled && (int)MODULE_PAYMENT_BIZUM_ZONE > 0 && isset($order->delivery['country']['id'])) {
+        $check_flag = false;
+        $check = $db->Execute("select zone_id from " . TABLE_ZONES_TO_GEO_ZONES . " where geo_zone_id = '" . MODULE_PAYMENT_BIZUM_ZONE . "' and zone_country_id = '" . (int)$order->delivery['country']['id'] . "' order by zone_id");
+        while (!$check->EOF) {
+          if ($check->fields['zone_id'] < 1) {
+            $check_flag = true;
+            break;
+          } elseif ($check->fields['zone_id'] == $order->delivery['zone_id']) {
+            $check_flag = true;
+            break;
+          }
+          $check->MoveNext();
+        }
+
+        if ($check_flag == false) {
+          $this->enabled = false;
+        }
+      }
+
+      // other status checks?
+      if ($this->enabled) {
+        // other checks here
+      }
+    }
 
     function javascript_validation() {
       return false;
@@ -123,7 +162,7 @@ function tep_db_num_rows_biz($query)
     function selection() {
       return [
           'id' => $this->code,
-                   'module' => $this->title
+          'module' => $this->title
       ];
     }
 
@@ -337,7 +376,7 @@ function tep_db_num_rows_biz($query)
 	    return false;
     }
 
-    function output_error() {
+    function get_error() {
       return false;
     }
 
@@ -365,6 +404,12 @@ function tep_db_num_rows_biz($query)
 	}
 
     function install() {
+     global $db, $messageStack;
+      if (defined('MODULE_PAYMENT_BIZUM_STATUS')) {
+        $messageStack->add_session('BIzum module already installed.', 'error');
+        zen_redirect(zen_href_link(FILENAME_MODULES, 'set=payment&module=bizum', 'NONSSL'));
+        return 'failed';
+      }
 	  tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('Activar modulo Bizum', 'MODULE_PAYMENT_BIZUM_STATUS', 'True', 'Quiere aceptar pagos usando Bizum?', '6', '3', 'zen_cfg_select_option(array(\'True\', \'False\'), ', now())");
 	  tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Nombre Comercio Bizum', 'MODULE_PAYMENT_BIZUM_NAMECOM', '', 'Nombre de comercio', '6', '4', now())");
       tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('FUC Comercio Bizum', 'MODULE_PAYMENT_BIZUM_ID_COM', '', 'Codigo de comercio proporcionado por la entidad bancaria', '6', '4', now())");
@@ -383,7 +428,6 @@ function tep_db_num_rows_biz($query)
     }
 
     function keys() {
-
 	  $claves = [];
 	  array_push($claves,
       'MODULE_PAYMENT_BIZUM_STATUS',
@@ -398,7 +442,6 @@ function tep_db_num_rows_biz($query)
       'MODULE_PAYMENT_BIZUM_SORT_ORDER',
 	  'MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID'
       );
-
 	  return $claves;
     }
   }
