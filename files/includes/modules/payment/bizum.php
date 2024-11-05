@@ -20,10 +20,10 @@
 *
 * Redsys Servicios de Procesamiento, S.L., CIF B85955367
 */
-if(!function_exists("escribirLog")) {
+if(!function_exists('escribirLog')) {
 	require_once('apiRedsys/redsysLibrary.php');
 }
-if(!class_exists("RedsysAPI")) {
+if(!class_exists('RedsysAPI')) {
 	require_once('apiRedsys/apiRedsysFinal.php');
 }
 
@@ -39,50 +39,77 @@ function tep_db_num_rows_biz($query)
 }
 
   class bizum {
-    var $code, $title, $description, $enabled;
-   /**
-     * $_check is used to check the configuration key set up
-     * @var int
-     */
-    protected $_check;
-    /**
-     * $order_status is the order status to set after processing the payment
-     * @var int
-     */
-    public $order_status;
-    /**
-     * $sort_order is the order priority of this payment module when displayed
-     * @var int
-     */
-    public $sort_order;
+      /**
+       * $_check is used to check the configuration key set up
+       * @var int
+       */
+      protected $_check;
+      /**
+       * $code determines the internal 'code' name used to designate "this" payment module
+       * @var string
+       */
+      public $code;
+      /**
+       * $description is a soft name for this payment method
+       * @var string
+       */
+      public $description;
+      /**
+       * $enabled determines whether this module shows or not... during checkout.
+       * @var bool
+       */
+      public $enabled;
+      /**
+       * $order_status is the order status to set after processing the payment
+       * @var int
+       */
+      public $order_status;
+      /**
+       * $title is the displayed name for this order total method
+       * @var string
+       */
+      public $title;
+      /**
+       * $sort_order is the order priority of this payment module when displayed
+       * @var int
+       */
+      public $sort_order;
+
+    public $form_action_url, $logActivo, $mantener_pedido_ante_error_pago;
 
 // class constructor
-    function bizum() {
+    function __construct() {
       global $order;
 
       $this->code = 'bizum';
       $this->title = MODULE_PAYMENT_BIZUM_TEXT_TITLE;
       $this->description = MODULE_PAYMENT_BIZUM_TEXT_DESCRIPTION;
-      $this->enabled = ((MODULE_PAYMENT_BIZUM_STATUS == 'True') ? true : false);
-      $this->sort_order = MODULE_PAYMENT_BIZUM_SORT_ORDER;
-      $this->mantener_pedido_ante_error_pago = ((MODULE_PAYMENT_BIZUM_ERROR_PAGO == 'si') ? true : false);
-      $this->logActivo = MODULE_PAYMENT_BIZUM_LOG;
+      $this->enabled = defined('MODULE_PAYMENT_BIZUM_STATUS') && MODULE_PAYMENT_BIZUM_STATUS == 'True';
+      $this->sort_order = defined('MODULE_PAYMENT_BIZUM_SORT_ORDER') ? MODULE_PAYMENT_BIZUM_SORT_ORDER : null;
+      $this->mantener_pedido_ante_error_pago = defined('MODULE_PAYMENT_BIZUM_ERROR_PAGO') && (MODULE_PAYMENT_BIZUM_ERROR_PAGO == 'si');
+      $this->logActivo = defined('MODULE_PAYMENT_BIZUM_LOG') ? MODULE_PAYMENT_BIZUM_LOG : 'no';
 
-	  if ((int)MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID > 0) {
+	  if (defined('MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID') && (int)MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID > 0) {
         $this->order_status = MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID;
       }
-	  if(MODULE_PAYMENT_BIZUM_URL=="SIS-D"){
-	    $this->form_action_url = "http://sis-d.redsys.es/sis/realizarPago/utf-8";
+
+      if (defined('MODULE_PAYMENT_BIZUM_URL') && MODULE_PAYMENT_BIZUM_URL === 'SIS-D'){
+	    $this->form_action_url = 'http://sis-d.redsys.es/sis/realizarPago/utf-8';
 	  }
-	  else if(MODULE_PAYMENT_BIZUM_URL=="SIS-I"){
-		$this->form_action_url = "https://sis-i.redsys.es:25443/sis/realizarPago/utf-8";
+	  elseif (defined('MODULE_PAYMENT_BIZUM_URL') && MODULE_PAYMENT_BIZUM_URL === 'SIS-I'){
+		$this->form_action_url = 'https://sis-i.redsys.es:25443/sis/realizarPago/utf-8';
 	  }
-	  else if(MODULE_PAYMENT_BIZUM_URL=="SIS-T"){
-		$this->form_action_url = "https://sis-t.redsys.es:25443/sis/realizarPago/utf-8";
+	  elseif (defined('MODULE_PAYMENT_BIZUM_URL') && MODULE_PAYMENT_BIZUM_URL === 'SIS-T'){
+		$this->form_action_url = 'https://sis-t.redsys.es:25443/sis/realizarPago/utf-8';
 	  }
-	  else if(MODULE_PAYMENT_BIZUM_URL=="SIS"){
-		$this->form_action_url = "https://sis.redsys.es/sis/realizarPago/utf-8";
+	  elseif (defined('MODULE_PAYMENT_BIZUM_URL') && MODULE_PAYMENT_BIZUM_URL === 'SIS'){
+		$this->form_action_url = 'https://sis.redsys.es/sis/realizarPago/utf-8';
 	  }
+      //no URL defined: disable module
+      else {
+          $this->enabled = false;
+      }
+
     }
 
 // class methods
@@ -92,8 +119,10 @@ function tep_db_num_rows_biz($query)
     }
 
     function selection() {
-      return array('id' => $this->code,
-                   'module' => $this->title);
+      return [
+          'id' => $this->code,
+                   'module' => $this->title
+      ];
     }
 
     function pre_confirmation_check() {
@@ -127,18 +156,18 @@ function tep_db_num_rows_biz($query)
 
 	  //Tipo MONEDA.
 	  if(MODULE_PAYMENT_BIZUM_MERCHANT_CURRENCY=='DOLAR'){
-		 $moneda = "840";
+		 $moneda = '840';
 	  }
 	  else {
-		 $moneda = "978"; //EURO POR DEFECTO
+		 $moneda = '978'; //EURO POR DEFECTO
 	  }
 
 	  //Nombre Terminal.
       $terminal = MODULE_PAYMENT_BIZUM_TERMINAL;
-      $trans = "0";
+      $trans = '0';
 
 	  //Idioma
-      $idioma_tpv = "0";
+      $idioma_tpv = '0';
       if ($language=='english')
       {
         $idioma_tpv='002';
@@ -150,43 +179,43 @@ function tep_db_num_rows_biz($query)
 
 	  //URL Respuesta ONLINE
 	  $home = explode('/', $_SERVER['REQUEST_URI']);
-	  $urltienda = "http://".$_SERVER['HTTP_HOST']."/".$home[1]."/bizum_process.php";
+	  $urltienda = 'http://' . $_SERVER['HTTP_HOST'] . '/' . $home[1] . '/bizum_process.php';
 
 	  //Firma
       $clave256=MODULE_PAYMENT_BIZUM_ID_CLAVE256;
       $codigo=MODULE_PAYMENT_BIZUM_ID_COM;
 
-      $ds_product_description="";
+      $ds_product_description= '';
       for($i=0; $i<sizeof($order->products); $i++){
-      	$ds_product_description=$order->products[$i]["qty"]."x".$order->products[$i]["name"]."/";
+      	$ds_product_description=$order->products[$i]['qty'] . 'x' . $order->products[$i]['name'] . '/';
       }
 
-      $ds_merchant_titular=$order->customer["firstname"]." ".$order->customer["lastname"];
+      $ds_merchant_titular=$order->customer['firstname'] . ' ' . $order->customer['lastname'];
 
-	$miObj = new RedsysAPI;
-	$miObj->setParameter("DS_MERCHANT_AMOUNT",$cantidad);
-	$miObj->setParameter("DS_MERCHANT_ORDER",strval($numpedido));
-	$miObj->setParameter("DS_MERCHANT_MERCHANTCODE",$codigo);
-	$miObj->setParameter("DS_MERCHANT_CURRENCY",$moneda);
-	$miObj->setParameter("DS_MERCHANT_TRANSACTIONTYPE",$trans);
-	$miObj->setParameter("DS_MERCHANT_TERMINAL",$terminal);
-	$miObj->setParameter("DS_MERCHANT_MERCHANTURL",$urltienda);
-	$miObj->setParameter("DS_MERCHANT_URLOK",$ds_merchant_urlok);
-	$miObj->setParameter("DS_MERCHANT_URLKO",$ds_merchant_urlko);
-	$miObj->setParameter("Ds_Merchant_ConsumerLanguage",$idioma_tpv);
-	$miObj->setParameter("Ds_Merchant_ProductDescription",$ds_product_description);
-	$miObj->setParameter("Ds_Merchant_Titular",$ds_merchant_titular);
-	$miObj->setParameter("Ds_Merchant_MerchantData",$ds_merchant_data);
-	$miObj->setParameter("Ds_Merchant_MerchantName",$ds_merchant_name);
-	$miObj->setParameter("Ds_Merchant_PayMethods", 'z');
-	$miObj->setParameter("Ds_Merchant_Module","zencart_bizum_3.0.1");
+	$miObj = new RedsysAPI();
+	$miObj->setParameter('DS_MERCHANT_AMOUNT',$cantidad);
+	$miObj->setParameter('DS_MERCHANT_ORDER',strval($numpedido));
+	$miObj->setParameter('DS_MERCHANT_MERCHANTCODE',$codigo);
+	$miObj->setParameter('DS_MERCHANT_CURRENCY',$moneda);
+	$miObj->setParameter('DS_MERCHANT_TRANSACTIONTYPE',$trans);
+	$miObj->setParameter('DS_MERCHANT_TERMINAL',$terminal);
+	$miObj->setParameter('DS_MERCHANT_MERCHANTURL',$urltienda);
+	$miObj->setParameter('DS_MERCHANT_URLOK',$ds_merchant_urlok);
+	$miObj->setParameter('DS_MERCHANT_URLKO',$ds_merchant_urlko);
+	$miObj->setParameter('Ds_Merchant_ConsumerLanguage',$idioma_tpv);
+	$miObj->setParameter('Ds_Merchant_ProductDescription',$ds_product_description);
+	$miObj->setParameter('Ds_Merchant_Titular',$ds_merchant_titular);
+	$miObj->setParameter('Ds_Merchant_MerchantData',$ds_merchant_data);
+	$miObj->setParameter('Ds_Merchant_MerchantName',$ds_merchant_name);
+	$miObj->setParameter('Ds_Merchant_PayMethods', 'z');
+	$miObj->setParameter('Ds_Merchant_Module', 'zencart_bizum_3.0.1');
 
 	//Datos de configuración
 	$version = getVersionClave();
 
 	//Clave del comercio que se extrae de la configuración del comercio
 	// Se generan los parámetros de la petición
-	$request = "";
+	$request = '';
 	$paramsBase64 = $miObj->createMerchantParameters();
 	$signatureMac = $miObj->createMerchantSignature($clave256);
 
@@ -207,12 +236,12 @@ function tep_db_num_rows_biz($query)
 			$clave256=MODULE_PAYMENT_BIZUM_ID_CLAVE256;
 
 			/** Recoger datos de respuesta **/
-			$version     = $_POST["Ds_SignatureVersion"];
-			$datos    = $_POST["Ds_MerchantParameters"];
-			$firma_remota    = $_POST["Ds_Signature"];
+			$version     = $_POST['Ds_SignatureVersion'];
+			$datos    = $_POST['Ds_MerchantParameters'];
+			$firma_remota    = $_POST['Ds_Signature'];
 
 			// Se crea Objeto
-			$miObj = new RedsysAPI;
+			$miObj = new RedsysAPI();
 
 			/** Se decodifican los datos enviados y se carga el array de datos **/
 			$decodec = $miObj->decodeMerchantParameters($datos);
@@ -238,35 +267,35 @@ function tep_db_num_rows_biz($query)
 				&& checkImporte($total)
 				&& $codigo == $codigoOrig
 			){
-				escribirLog($idLog." -- El pedido con ID " . $pedido . " es válido y se ha registrado correctamente.",$logActivo);
+				escribirLog($idLog. ' -- El pedido con ID ' . $pedido . ' es válido y se ha registrado correctamente.',$logActivo);
 				$valido = TRUE;
 			} else {
-				escribirLog($idLog." -- Parámetros incorrectos.",$logActivo);
+				escribirLog($idLog. ' -- Parámetros incorrectos.',$logActivo);
 				if(!checkImporte($total)) {
-					escribirLog($idLog." -- Formato de importe incorrecto.",$logActivo);
+					escribirLog($idLog. ' -- Formato de importe incorrecto.',$logActivo);
 				}
 				if(!checkPedidoNum($pedido)) {
-					escribirLog($idLog." -- Formato de nº de pedido incorrecto.",$logActivo);
+					escribirLog($idLog. ' -- Formato de nº de pedido incorrecto.',$logActivo);
 				}
 				if(!checkFuc($codigo)) {
-					escribirLog($idLog." -- Formato de FUC incorrecto.",$logActivo);
+					escribirLog($idLog. ' -- Formato de FUC incorrecto.',$logActivo);
 				}
 				if(!checkMoneda($moneda)) {
-					escribirLog($idLog." -- Formato de moneda incorrecto.",$logActivo);
+					escribirLog($idLog. ' -- Formato de moneda incorrecto.',$logActivo);
 				}
 				if(!checkRespuesta($respuesta)) {
-					escribirLog($idLog." -- Formato de respuesta incorrecto.",$logActivo);
+					escribirLog($idLog. ' -- Formato de respuesta incorrecto.',$logActivo);
 				}
 				if(!checkFirma($firma_remota)) {
-					escribirLog($idLog." -- Formato de firma incorrecto.",$logActivo);
+					escribirLog($idLog. ' -- Formato de firma incorrecto.',$logActivo);
 				}
-				escribirLog($idLog." -- El pedido con ID " . $pedido . " NO es válido.",$logActivo);
+				escribirLog($idLog. ' -- El pedido con ID ' . $pedido . ' NO es válido.',$logActivo);
 				$valido = FALSE;
 			}
 
 			if ($firma_local != $firma_remota || FALSE === $valido) {
 				//El proceso no puede ser completado, error de autenticación
-				escribirLog($idLog." -- La firma no es correcta.",$logActivo);
+				escribirLog($idLog. ' -- La firma no es correcta.',$logActivo);
 				$_SESSION['cart']->reset(true);
 				zen_redirect(zen_href_link(FILENAME_LOGOFF, 'error_message=ERROR DE FIRMA', 'NONSSL', true, false));
 			}
@@ -278,17 +307,17 @@ function tep_db_num_rows_biz($query)
 			} else {
 				if(!$this->mantener_pedido_ante_error_pago){
 					$_SESSION['cart']->reset(true);
-					escribirLog($idLog." -- Error de respuesta. Vaciando carrito.",$logActivo);
+					escribirLog($idLog. ' -- Error de respuesta. Vaciando carrito.',$logActivo);
 					zen_redirect(zen_href_link(FILENAME_LOGOFF, 'error_message=ERROR DE RESPUESTA', 'NONSSL', true, false));
 				} else {
-					escribirLog($idLog." -- Error de respuesta. Manteniendo carrito.",$logActivo);
+					escribirLog($idLog. ' -- Error de respuesta. Manteniendo carrito.',$logActivo);
 					zen_redirect(zen_href_link(FILENAME_CHECKOUT, 'error_message=ERROR DE RESPUESTA', 'NONSSL', true, false));
 				}
 			}
 		} else {
       		//Transacción denegada
-			escribirLog($idLog." -- Error. Hacking atempt!",$logActivo);
-      		die ("Hacking atempt!");
+			escribirLog($idLog. ' -- Error. Hacking atempt!',$logActivo);
+      		die ('Hacking atempt!');
 			exit;
       	}
     }
@@ -320,7 +349,7 @@ function tep_db_num_rows_biz($query)
 
 	function getCurrenciesInstalled(){
 		global $db;
-		$currencies = array();
+		$currencies = [];
 		$currency_query_raw = "select currencies_id, title, code, symbol_left, symbol_right, decimal_point, thousands_point, decimal_places, last_updated, value from " . TABLE_CURRENCIES . " order by title";
 		$currency = $db->Execute($currency_query_raw);
 
@@ -353,7 +382,7 @@ function tep_db_num_rows_biz($query)
 
     function keys() {
 
-	  $claves = array();
+	  $claves = [];
 	  array_push($claves,
       'MODULE_PAYMENT_BIZUM_STATUS',
 	  'MODULE_PAYMENT_BIZUM_NAMECOM',
@@ -371,5 +400,3 @@ function tep_db_num_rows_biz($query)
 	  return $claves;
     }
   }
-
-?>
