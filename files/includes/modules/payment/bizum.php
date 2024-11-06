@@ -38,7 +38,7 @@ if (!class_exists('RedsysAPI')) {
     require_once('apiRedsys/apiRedsysFinal.php');
 }
 
-function tep_db_query_biz($query)
+function tep_db_query_biz($query): queryFactoryResult
 {
     global $db;
     return ($db->Execute($query));
@@ -55,22 +55,22 @@ class bizum
      * $_check is used to check the configuration key set up
      * @var int
      */
-    protected $_check;
+    protected int $_check;
     /**
      * $code determines the internal 'code' name used to designate "this" payment module
      * @var string
      */
-    public $code;
+    public string $code;
     /**
      * $description is a soft name for this payment method
      * @var string
      */
-    public $description;
+    public string $description;
     /**
      * $enabled determines whether this module shows or not... during checkout.
      * @var bool
      */
-    public $enabled;
+    public bool $enabled;
     /**
      * $order_status is the order status to set after processing the payment
      * @var int
@@ -80,15 +80,16 @@ class bizum
      * $title is the displayed name for this order total method
      * @var string
      */
-    public $title;
+    public string $title;
     /**
      * $sort_order is the order priority of this payment module when displayed
      * @var int
      */
     public $sort_order;
 
-    public $form_action_url = '';
-    public $logActivo, $mantener_pedido_ante_error_pago;
+    public string $form_action_url = '';
+    public string $logActivo;
+    public bool $mantener_pedido_ante_error_pago;
 
 // class constructor
     function __construct()
@@ -113,6 +114,7 @@ class bizum
         $this->logActivo = defined('MODULE_PAYMENT_BIZUM_LOG') ? MODULE_PAYMENT_BIZUM_LOG : 'no';
 
         if (defined('MODULE_PAYMENT_BIZUM_URL')) {
+//all except "SIS" are development servers
             switch (MODULE_PAYMENT_BIZUM_URL) {
                 case ('SIS-D'):
                     $this->form_action_url = 'http://sis-d.redsys.es/sis/realizarPago/utf-8';
@@ -137,7 +139,8 @@ class bizum
     }
 
 // class methods
-    function update_status()
+
+    public function update_status(): void
     {
         global $order, $db;
 
@@ -166,12 +169,21 @@ class bizum
         }
     }
 
-    function javascript_validation()
+    /**
+     * page Step 2 checkout_payment: returns inline script for validation
+     */
+    public function javascript_validation()
     {
         return false;
     }
 
-    function selection(): array
+    /**
+     * page Step 2 checkout_payment options
+     * either text can be added to the 'module' field or additional field arrays can be added
+     * see authorizenet.php for a detailed example
+     * @return array
+     */
+    public function selection(): array
     {
         return [
             'id' => $this->code,
@@ -179,17 +191,47 @@ class bizum
         ];
     }
 
-    function pre_confirmation_check()
+    /**
+     * page Step 3 checkout_confirmation: runs in header
+     */
+    public function pre_confirmation_check()
     {
         return false;
     }
 
-    function confirmation()
+    /**
+     * page Step 3 checkout_confirmation:
+     * array allows texts to be shown under the payment method title
+     * e.g.
+     * Payment Method (always shown)
+     * Bizum (always shown)
+     * Bizum fn confirmation: array title
+     * Bizum fn confirmation: array fields[title]
+     * Bizum fn confirmation: array fields[field]
+     */
+    public function confirmation()
     {
+        // example array
+        /*
+        return [
+            'title' => 'Bizum fn confirmation: array title',
+            'fields' => [
+                [
+                    'title' => 'Bizum fn confirmation: array fields[title]',
+                    'field' => 'Bizum fn confirmation: array fields[field]'
+                ]
+            ]
+        ];
+        */
         return false;
     }
 
-    function process_button()
+    /**
+     * page Step 3 checkout_confirmation:
+     * create parameters to send to gateway etc.
+     * @return string
+     */
+    public function process_button(): string
     {
         global $order, $language;
 
@@ -280,7 +322,10 @@ class bizum
         return $process_button_string;
     }
 
-    function before_process()
+    /** called by checkout_process to handle gateway response
+     * @return void
+     */
+    function before_process(): void
     {
         $idLog = generateIdLog();
         $logActivo = MODULE_PAYMENT_BIZUM_LOG;
@@ -376,7 +421,10 @@ class bizum
         }
     }
 
-    function after_process()
+    /**
+     * checkout_process
+     */
+    public function after_process()
     {
         global $db, $insert_id;
 
@@ -389,12 +437,18 @@ class bizum
         return false;
     }
 
-    function get_error()
+    /** used in checkout_Payment header to process any error message/try again
+     *
+     */
+    public function get_error(): false
     {
         return false;
     }
 
-    function check()
+    /** called by module
+     * @return int
+     */
+    public function check(): int
     {
         if (!isset($this->_check)) {
             $check_query = tep_db_query_biz("select configuration_value from " . TABLE_CONFIGURATION . " where configuration_key = 'MODULE_PAYMENT_BIZUM_STATUS'");
@@ -403,13 +457,15 @@ class bizum
         return $this->_check;
     }
 
-    function getCurrenciesInstalled()
+    /**
+     * @return array
+     */
+    public function getCurrenciesInstalled(): array
     {
         global $db;
         $currencies = [];
         $currency_query_raw = "select currencies_id, title, code, symbol_left, symbol_right, decimal_point, thousands_point, decimal_places, last_updated, value from " . TABLE_CURRENCIES . " order by title";
         $currency = $db->Execute($currency_query_raw);
-
 
         while (!$currency->EOF) {
             $cInfo = new objectInfo($currency->fields);
@@ -419,6 +475,9 @@ class bizum
         return $currencies;
     }
 
+    /**
+     * @return string only if failed, returning anything other than "failed" is ignored
+     */
     public function install(): string
     {
         global $db, $messageStack;
