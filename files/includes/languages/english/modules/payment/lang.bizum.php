@@ -1,4 +1,14 @@
 <?php
+
+declare(strict_types=1);
+/**
+ * Bizum Payment Module
+ *
+ * @copyright Copyright 2003-2023 Zen Cart Development Team
+ * @copyright Portions Copyright 2003 osCommerce
+ * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
+ * @updated 05/11/2024
+ */
 /**
 * NOTA SOBRE LA LICENCIA DE USO DEL SOFTWARE
 *
@@ -22,8 +32,8 @@
 */
 
 $define = [
-      'MODULE_PAYMENT_BIZUM_TEXT_TITLE' => 'Pay via Bizum <img height="32" width="72" src="' . DIR_WS_CATALOG . '/images/modules/payment/bizum.png">',
-      'MODULE_PAYMENT_BIZUM_TEXT_DESCRIPTION' => '<strong>Description:</strong><br>Pay via Bizum<br><br><img src="../images/modules/payment/bizum.png">',
+      'MODULE_PAYMENT_BIZUM_TEXT_TITLE' => 'Bizum (Spain)',
+      'MODULE_PAYMENT_BIZUM_TEXT_DESCRIPTION' => '<strong>Description:</strong><br>Pay via Bizum<br><img src="../images/modules/payment/bizum.png" alt="logo Bizum">',
       'MODULE_PAYMENT_BIZUM_TEXT_ERROR_MESSAGE','Processing error',
       'MODULE_PAYMENT_BIZUM_TEXT_CANCEL','Process Cancelled'
 ];

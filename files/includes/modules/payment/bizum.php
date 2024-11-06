@@ -403,45 +403,47 @@ function tep_db_num_rows_biz($query)
 		return $currencies;
 	}
 
-    function install() {
+    public function install(): string
+    {
      global $db, $messageStack;
       if (defined('MODULE_PAYMENT_BIZUM_STATUS')) {
-        $messageStack->add_session('BIzum module already installed.', 'error');
+        $messageStack->add_session('Bizum module already installed.', 'error');
         zen_redirect(zen_href_link(FILENAME_MODULES, 'set=payment&module=bizum', 'NONSSL'));
         return 'failed';
       }
-	  tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('Activar modulo Bizum', 'MODULE_PAYMENT_BIZUM_STATUS', 'True', 'Quiere aceptar pagos usando Bizum?', '6', '3', 'zen_cfg_select_option(array(\'True\', \'False\'), ', now())");
-	  tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Nombre Comercio Bizum', 'MODULE_PAYMENT_BIZUM_NAMECOM', '', 'Nombre de comercio', '6', '4', now())");
-      tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('FUC Comercio Bizum', 'MODULE_PAYMENT_BIZUM_ID_COM', '', 'Codigo de comercio proporcionado por la entidad bancaria', '6', '4', now())");
-      tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Clave de Encriptacion (SHA-256)', 'MODULE_PAYMENT_BIZUM_ID_CLAVE256', '', 'Clave de encriptacion SHA-256 proporcionada por la entidad bancaria', '6', '4', now())");
-	  tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Terminal', 'MODULE_PAYMENT_BIZUM_TERMINAL', '1', 'Terminal de pago en Redsys', '6', '4', now())");
-	  tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('Tipo de moneda', 'MODULE_PAYMENT_BIZUM_MERCHANT_CURRENCY', 'EURO', 'Codigo correspondiente a la moneda EURO', '6', '4','zen_cfg_select_option(array(\'EURO\', \'DOLAR\'), ', now())");
-      tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('Entorno de Bizum', 'MODULE_PAYMENT_BIZUM_URL', 'SIS-D', 'Direccion en internet de la pasarela de pago', '6', '4','zen_cfg_select_option(array(\'SIS-D\', \'SIS-I\', \'SIS-T\', \'SIS\'), ', now())");
-	  tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function,date_added) values ('Error pago', 'MODULE_PAYMENT_BIZUM_ERROR_PAGO', 'no', 'Mantener carrito si se produce un error en el pago', '6', '4','zen_cfg_select_option(array(\'si\', \'no\'), ',  now())");
-	  tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function,date_added) values ('Log activo', 'MODULE_PAYMENT_BIZUM_LOG', 'no', 'Crear trazas de log', '6', '4','zen_cfg_select_option(array(\'si\', \'no\'), ',  now())");
-      tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Orden de aparicion', 'MODULE_PAYMENT_BIZUM_SORT_ORDER', '10', 'Orden de aparicion. Numero menor es mostrado antes que los mayores.', '6', '0', now())");
-	  tep_db_query_biz("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, use_function, date_added) values ('Order Status', 'MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID', '0', 'Selecciona el estado final del pedido', '6', '0', 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name', now())");
+        tep_db_query_biz("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) VALUES ('Activar modulo Bizum', 'MODULE_PAYMENT_BIZUM_STATUS', 'True', '¿Quiere aceptar pagos usando Bizum?', '6', '3', 'zen_cfg_select_option(array(\'True\', \'False\'), ', now())");
+        tep_db_query_biz("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) VALUES ('Nombre Comercio Bizum', 'MODULE_PAYMENT_BIZUM_NAMECOM', '', 'Nombre de comercio', '6', '4', now())");
+        tep_db_query_biz("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) VALUES ('FUC Comercio Bizum', 'MODULE_PAYMENT_BIZUM_ID_COM', '', 'Código de comercio proporcionado por la entidad bancaria', '6', '4', now())");
+        tep_db_query_biz("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) VALUES ('Clave de Encriptación (SHA-256)', 'MODULE_PAYMENT_BIZUM_ID_CLAVE256', '', 'Clave de encriptación SHA-256 proporcionada por la entidad bancaria', '6', '4', now())");
+        tep_db_query_biz("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) VALUES ('Terminal', 'MODULE_PAYMENT_BIZUM_TERMINAL', '1', 'Terminal de pago en Redsys', '6', '4', now())");
+        tep_db_query_biz("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) VALUES ('Tipo de moneda', 'MODULE_PAYMENT_BIZUM_MERCHANT_CURRENCY', 'EURO', 'Código correspondiente a la moneda EURO', '6', '4','zen_cfg_select_option(array(\'EURO\', \'DOLAR\'), ', now())");
+        tep_db_query_biz("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) VALUES ('Entorno de Bizum', 'MODULE_PAYMENT_BIZUM_URL', 'SIS-D', 'URL de la pasarela de pago', '6', '4','zen_cfg_select_option(array(\'SIS-D\', \'SIS-I\', \'SIS-T\', \'SIS\'), ', now())");
+        tep_db_query_biz("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function,date_added) VALUES ('Error pago', 'MODULE_PAYMENT_BIZUM_ERROR_PAGO', 'si', '¿Mantener carrito si se produce un error en el pago?', '6', '4','zen_cfg_select_option(array(\'si\', \'no\'), ',  now())");
+        tep_db_query_biz("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function,date_added) VALUES ('Log activo', 'MODULE_PAYMENT_BIZUM_LOG', 'no', '¿Crear trazas de log?', '6', '4','zen_cfg_select_option(array(\'si\', \'no\'), ',  now())");
+        tep_db_query_biz("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) VALUES ('Orden de aparición', 'MODULE_PAYMENT_BIZUM_SORT_ORDER', '10', 'Orden de aparición. Un número menor es mostrado antes que los mayores.', '6', '0', now())");
+        tep_db_query_biz("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, use_function, date_added) VALUES ('Order Status', 'MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID', '0', 'Selecciona el estado final del pedido', '6', '0', 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name', now())");
+        return '';
    }
 
-    function remove() {
-      tep_db_query_biz("delete from " . TABLE_CONFIGURATION . " where configuration_key in ('" . implode("', '", $this->keys()) . "')");
+    public function remove(): void
+    {
+      tep_db_query_biz("DELETE FROM " . TABLE_CONFIGURATION . " WHERE configuration_key in ('" . implode("', '", $this->keys()) . "')");
     }
 
-    function keys() {
-	  $claves = [];
-	  array_push($claves,
-      'MODULE_PAYMENT_BIZUM_STATUS',
-	  'MODULE_PAYMENT_BIZUM_NAMECOM',
-      'MODULE_PAYMENT_BIZUM_ID_COM',
-	  'MODULE_PAYMENT_BIZUM_TERMINAL',
-	  'MODULE_PAYMENT_BIZUM_MERCHANT_CURRENCY',
-	  'MODULE_PAYMENT_BIZUM_ERROR_PAGO',
-	  'MODULE_PAYMENT_BIZUM_LOG',
-      'MODULE_PAYMENT_BIZUM_ID_CLAVE256',
-      'MODULE_PAYMENT_BIZUM_URL',
-      'MODULE_PAYMENT_BIZUM_SORT_ORDER',
-	  'MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID'
-      );
-	  return $claves;
+    public function keys(): array
+    {
+        return [
+            'MODULE_PAYMENT_BIZUM_STATUS',
+            'MODULE_PAYMENT_BIZUM_NAMECOM',
+            'MODULE_PAYMENT_BIZUM_ID_COM',
+            'MODULE_PAYMENT_BIZUM_ID_CLAVE256',
+            'MODULE_PAYMENT_BIZUM_TERMINAL',
+            'MODULE_PAYMENT_BIZUM_MERCHANT_CURRENCY',
+            'MODULE_PAYMENT_BIZUM_URL',
+            'MODULE_PAYMENT_BIZUM_ERROR_PAGO',
+            'MODULE_PAYMENT_BIZUM_LOG',
+            'MODULE_PAYMENT_BIZUM_SORT_ORDER',
+            'MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID'
+        ];
     }
   }
