@@ -32,10 +32,21 @@ declare(strict_types=1);
 */
 
 $define = [
-      'MODULE_PAYMENT_BIZUM_TEXT_TITLE' => 'Bizum (Spain)',
+      'MODULE_PAYMENT_BIZUM_TEXT_TITLE' => 'Bizum',
+    //admin description
+    // image link is hard-coded instead of using the admin constant as admin constant does not exist storefront
       'MODULE_PAYMENT_BIZUM_TEXT_DESCRIPTION' => '<strong>Description:</strong><br>Pay via Bizum<br><img src="../images/modules/payment/bizum.png" alt="logo Bizum">',
-      'MODULE_PAYMENT_BIZUM_TEXT_ERROR_MESSAGE','Processing error',
-      'MODULE_PAYMENT_BIZUM_TEXT_CANCEL','Process Cancelled'
+    //storefront checkout_payment (payment selection page), description suffixed to
+    //includes\modules\payment\bizum.php: function selection()
+    //image native size 180 x 78
+    //image_min native size 156 x 56
+      'MODULE_PAYMENT_BIZUM_TEXT_DESCRIPTION_STOREFRONT_CHECKOUT_PAYMENT' => '<img src="' . DIR_WS_IMAGES . 'modules/payment/bizum_min.png" alt="logo Bizum" width="75px"> <span class="biggerText">Bizum instant payment by mobile phone</span>',
+    //storefront checkout_payment (payment selection page), description suffixed to
+    //includes\modules\payment\bizum.php: function selection()
+    'MODULE_PAYMENT_BIZUM_TEXT_DESCRIPTION_STOREFRONT_CHECKOUT_CONFIRMATION' => '<img src="' . DIR_WS_IMAGES . 'modules/payment/bizum.png" alt="logo Bizum">',
+      'MODULE_PAYMENT_BIZUM_TEXT_ERROR_MESSAGE' => 'Processing error',
+      'MODULE_PAYMENT_BIZUM_TEXT_CANCEL' => 'Process Cancelled',
+      'MODULE_PAYMENT_BIZUM_ERROR_NOT_CONFIGURED' => 'data missing (module is disabled)'
 ];
 
 return $define;

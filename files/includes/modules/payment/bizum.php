@@ -7,7 +7,7 @@ declare(strict_types=1);
  * @copyright Copyright 2003-2023 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @updated 05/11/2024
+ * @updated 06/11/2024
  */
 
 /**
@@ -203,7 +203,11 @@ class bizum
     {
         return [
             'id' => $this->code,
-            'module' => $this->title
+            //default
+            //'module' => $this->code;
+
+            //use image and language text
+            'module' => MODULE_PAYMENT_BIZUM_TEXT_DESCRIPTION_STOREFRONT_CHECKOUT_PAYMENT
         ];
     }
 
