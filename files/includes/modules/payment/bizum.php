@@ -105,6 +105,22 @@ class bizum
             return false;
         }
 
+            if (MODULE_PAYMENT_BIZUM_STATUS === 'True' &&
+                (
+                    MODULE_PAYMENT_BIZUM_NAMECOM === '' ||
+                    MODULE_PAYMENT_BIZUM_ID_COM === '' ||
+                    strlen(MODULE_PAYMENT_BIZUM_ID_CLAVE256) !== 32
+                )
+            ) {
+                //auto-disable module in storefront
+                $this->enabled = false;
+
+                //flag to admin that module is missing data/disabled
+                if (IS_ADMIN_FLAG === true) {
+                    $this->title .= ' <span class="alert">' . MODULE_PAYMENT_BIZUM_ERROR_NOT_CONFIGURED . '</span>';
+                }
+            }
+
         if (defined('MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID') && (int)MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID > 0) {
             $this->order_status = MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID;
         }
