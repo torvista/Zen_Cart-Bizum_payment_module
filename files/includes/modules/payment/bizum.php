@@ -86,7 +86,8 @@ function tep_db_num_rows_biz($query)
      */
     public $sort_order;
 
-    public $form_action_url, $logActivo, $mantener_pedido_ante_error_pago;
+    public $form_action_url = '';
+    public $logActivo, $mantener_pedido_ante_error_pago;
 
 // class constructor
     function __construct() {
@@ -103,26 +104,29 @@ function tep_db_num_rows_biz($query)
         $this->order_status = MODULE_PAYMENT_BIZUM_ORDER_STATUS_ID;
       }
 
-      $this->mantener_pedido_ante_error_pago = defined('MODULE_PAYMENT_BIZUM_ERROR_PAGO') && (MODULE_PAYMENT_BIZUM_ERROR_PAGO == 'si');
+      $this->mantener_pedido_ante_error_pago = defined('MODULE_PAYMENT_BIZUM_ERROR_PAGO') && (MODULE_PAYMENT_BIZUM_ERROR_PAGO === 'si');
+
       $this->logActivo = defined('MODULE_PAYMENT_BIZUM_LOG') ? MODULE_PAYMENT_BIZUM_LOG : 'no';
 
-      if (defined('MODULE_PAYMENT_BIZUM_URL') && MODULE_PAYMENT_BIZUM_URL === 'SIS-D'){
-	    $this->form_action_url = 'http://sis-d.redsys.es/sis/realizarPago/utf-8';
-	  }
-	  elseif (defined('MODULE_PAYMENT_BIZUM_URL') && MODULE_PAYMENT_BIZUM_URL === 'SIS-I'){
-		$this->form_action_url = 'https://sis-i.redsys.es:25443/sis/realizarPago/utf-8';
-	  }
-	  elseif (defined('MODULE_PAYMENT_BIZUM_URL') && MODULE_PAYMENT_BIZUM_URL === 'SIS-T'){
-		$this->form_action_url = 'https://sis-t.redsys.es:25443/sis/realizarPago/utf-8';
-	  }
-	  elseif (defined('MODULE_PAYMENT_BIZUM_URL') && MODULE_PAYMENT_BIZUM_URL === 'SIS'){
-		$this->form_action_url = 'https://sis.redsys.es/sis/realizarPago/utf-8';
-	  }
-      //no URL defined: disable module
-      else {
-          $this->enabled = false;
-      }
-
+        if (defined('MODULE_PAYMENT_BIZUM_URL')) {
+            switch (MODULE_PAYMENT_BIZUM_URL) {
+                case ('SIS-D'):
+                    $this->form_action_url = 'http://sis-d.redsys.es/sis/realizarPago/utf-8';
+                    break;
+                case ('SIS-I'):
+                    $this->form_action_url = 'https://sis-i.redsys.es:25443/sis/realizarPago/utf-8';
+                    break;
+                case ('SIS-T'):
+                    $this->form_action_url = 'https://sis-t.redsys.es:25443/sis/realizarPago/utf-8';
+                    break;
+                case ('SIS'):
+                    $this->form_action_url = 'https://sis.redsys.es/sis/realizarPago/utf-8';
+                    break;
+            }
+        } else {
+            //no URL defined: disable module
+            $this->enabled = false;
+        }
       if (is_object($order)) $this->update_status();
     }
 
