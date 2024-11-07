@@ -31,11 +31,12 @@ declare(strict_types=1);
  *
  * Redsys Servicios de Procesamiento, S.L., CIF B85955367
  */
+
 if (!function_exists('escribirLog')) {
-    require_once('apiRedsys/redsysLibrary.php');
+    require_once('redsys/apiRedsys/redsysLibrary.php');
 }
 if (!class_exists('RedsysAPI')) {
-    require_once('apiRedsys/apiRedsysFinal.php');
+    require_once('redsys/apiRedsys/apiRedsysFinal.php');
 }
 
 function tep_db_query_biz($query): queryFactoryResult
@@ -49,7 +50,10 @@ function tep_db_num_rows_biz($query)
     return ($query->RecordCount());
 }
 
-class bizum
+/**
+ * extending the base allows use of notify-observers
+ */
+class bizum extends base
 {
     /**
      * $_check is used to check the configuration key set up
@@ -88,7 +92,13 @@ class bizum
     public $sort_order;
 
     public string $form_action_url = '';
+    /**
+     * status of log write (currently si/no) TODO
+     * @var string
+     */
     public string $logActivo;
+
+    public string $logFile = '';
     public bool $mantener_pedido_ante_error_pago;
 
 // class constructor
@@ -194,7 +204,7 @@ class bizum
     }
 
     /**
-     * page Step 2 checkout_payment options
+     * page Step 2 checkout_payment (payment options page)
      * either text can be added to the 'module' field or additional field arrays can be added
      * see authorizenet.php for a detailed example
      * @return array
@@ -203,7 +213,7 @@ class bizum
     {
         return [
             'id' => $this->code,
-            //default
+            //default, shows name only
             //'module' => $this->code;
 
             //use image and language text
@@ -220,7 +230,7 @@ class bizum
     }
 
     /**
-     * page Step 3 checkout_confirmation:
+     * page Step 3 checkout_confirmation (when payment option has been selected))
      * array allows texts to be shown under the payment method title
      * e.g.
      * Payment Method (always shown)
@@ -247,13 +257,19 @@ class bizum
     }
 
     /**
-     * page Step 3 checkout_confirmation:
+     * page Step 3 checkout_confirmation (when payment option has been selected)
      * create parameters to send to gateway etc.
      * @return string
      */
     public function process_button(): string
     {
-        global $order, $language;
+        global $order;
+
+        //added log
+        escribirLog("\n================================================================================\n", $this->logActivo);
+        escribirLog("BIZUM START - checkout_confirmation - fn_process_button", $this->logActivo);
+        escribirLog('Customer: ID=' . $_SESSION['customer_id'] . ', name=' . $order->customer['firstname'] . ' ' . $order->customer['lastname'] . ', session_id=' . zen_session_id(), $this->logActivo);
+//eof
 
         //DATOS PARA EL TPV
 
@@ -261,13 +277,28 @@ class bizum
         $ds_merchant_data = zen_session_id();
 
         //Amount
-        $total = number_format($order->info['total'], 2);
-        $cantidad = round($total * $order->info['currency_value'], 2);
+        /*3.0.1 breaks for values>999.99!
+        $total= number_format($order->info['total'], 2);//order total to two decimal places. May be any of the currencies offered in the shop. This info['total'] is always formatted as 1234567.89 but this line will change that to 1,234,567.89 which is a STRING
+        $cantidad = round($total*$order->info['currency_value'],2);//order total multiplied by selected currency exchange rate to default currency as defined in the shop admin. "round" works with FLOATS and the previous line created a STRING so the result is 1.
         $cantidad = number_format($cantidad, 2, '.', '');
         $cantidad = preg_replace('/\./', '', $cantidad);
+        */
+        $cantidad = (int)number_format(round($order->info['total'] * $order->info['currency_value'], 2), 2, '', '');
+        escribirLog('$cantidad=' . $cantidad . ' (no commas or decimals)', $this->logActivo);
 
         //Id_Pedido
+
+        // This number is actually a record of the payment ATTEMPT when customer first clicks on the payment button to go to the TPV.
+        // The actual Order ID registered in the shop is only created at the end of the successful transaction.
+
+        //choose what you prefer
+        //12 chars max. 1-4:digits, 5-12 : 0-9/a-z/A-Z
+        //$numpedido = rand(10,10000);
+        //$numpedido = date("ymdHi"). rand(00,99);//alternative
+        //echo '$numpedido='.$numpedido.'<br />';
+
         $numpedido = rand(10, 10000);
+        escribirLog('$numpedido=' . $numpedido . ' (payment attempt)', $this->logActivo);
 
         //Nombre Com.
         $ds_merchant_name = MODULE_PAYMENT_BIZUM_NAMECOM;
@@ -278,24 +309,119 @@ class bizum
         } else {
             $moneda = '978'; //EURO POR DEFECTO
         }
+        escribirLog('$moneda=' . $moneda . ' (currency)', $this->logActivo);
 
         //Nombre Terminal.
         $terminal = MODULE_PAYMENT_BIZUM_TERMINAL;
+
+        //Transaction Type
         $trans = '0';
 
         //Idioma
+       /*
         $idioma_tpv = '0';
         if ($language == 'english') {
             $idioma_tpv = '002';
         }
+       */
+
+//bof steve to override lack of language handling
+// The Redsys code above sets it as 0 "default" unless session language is english 002.But spanish is 001, so wtf?
+
+        // optional suffix to add to the store name on the customers receipt
+        $ds_merchant_name_suffix = '';
+
+        //$_SESSION['language'] is the name for the directory of the language files and NOT the name as shown on the storefront
+        switch ($_SESSION['language']) {
+            case 'spanish':
+                $idioma_tpv = '001';
+                $ds_merchant_name_suffix = ' (España)';
+                break;
+            case 'english':
+                $idioma_tpv = '002';
+                $ds_merchant_name_suffix = ' (Spain)';
+                break;
+            case 'catalan':
+                $idioma_tpv = '003';
+                break;
+            case 'french':
+                $idioma_tpv = '004';
+                break;
+            case 'german':
+                $idioma_tpv = '005';
+                break;
+            case 'dutch':
+                $idioma_tpv = '006';
+                break;
+            case 'italian':
+                $idioma_tpv = '007';
+                break;
+            case 'swedish':
+                $idioma_tpv = '008';
+                break;
+            case 'portuguese':
+                $idioma_tpv = '009';
+                break;
+            case 'valencian':
+                $idioma_tpv = '010';
+                break;
+            case 'polish':
+                $idioma_tpv = '011';
+                break;
+            case 'galician':
+                $idioma_tpv = '012';
+                break;
+            case 'basque':
+                $idioma_tpv = '013';
+                break;
+            case 'bulgarian':
+                $idioma_tpv = '100';
+                break;
+            case 'chinese':
+                $idioma_tpv = '156';
+                break;
+            case 'croatian':
+                $idioma_tpv = '191';
+                break;
+            case 'danish':
+                $idioma_tpv = '208';
+                break;
+            case 'estonian':
+                $idioma_tpv = '233';
+                break;
+            case 'finnish':
+                $idioma_tpv = '246';
+                break;
+            case 'greek':
+                $idioma_tpv = '300';
+                break;
+            case 'hungarian':
+                $idioma_tpv = '348';
+                break;
+            case 'japonese':
+                $idioma_tpv = '392';
+                break;
+            default:
+                $idioma_tpv = '001';
+                $ds_merchant_name_suffix = ' (España)';
+        }
+        escribirLog('$idioma_tpv=' . $idioma_tpv . ' ($_SESSION[\'language\']="' . $_SESSION['language'] . '")', $this->logActivo);
+//eof language
 
         //URL OK Y KO
-        $ds_merchant_urlok = zen_href_link(FILENAME_CHECKOUT_SUCCESS, '', 'NONSSL');
-        $ds_merchant_urlko = zen_href_link(FILENAME_LOGOFF, 'error_message=ERROR', 'NONSSL', true, false);
+        $ds_merchant_urlok = zen_href_link(FILENAME_CHECKOUT_SUCCESS, '', 'SSL');
+
+        // logoff on a failure...how to lose a customer!
+        //$ds_merchant_urlko = zen_href_link(FILENAME_LOGOFF, 'error_message=ERROR', 'NONSSL', true, false);
+
+        // for better error handling...but zen_href_link encodes & to &amp; which we don't want, so remove it on next line.
+        $ds_merchant_urlko = zen_href_link(FILENAME_CHECKOUT_PAYMENT, 'payment_error=bizum', 'SSL');
+        $ds_merchant_urlko = str_replace('&amp;', '&', $ds_merchant_urlko);
 
         //URL Respuesta ONLINE
         $home = explode('/', $_SERVER['REQUEST_URI']);
         $urltienda = 'http://' . $_SERVER['HTTP_HOST'] . '/' . $home[1] . '/bizum_process.php';
+        escribirLog('$urltienda=' . $urltienda . ' (processing)', $this->logActivo);
 
         //Firma
         $clave256 = MODULE_PAYMENT_BIZUM_ID_CLAVE256;
@@ -348,7 +474,7 @@ class bizum
     function before_process(): void
     {
         $idLog = generateIdLog();
-        $logActivo = MODULE_PAYMENT_BIZUM_LOG;
+
         $valido = false;
         if (!empty($_POST)) {//URL DE RESP. ONLINE
 
@@ -386,35 +512,35 @@ class bizum
                 && checkImporte($total)
                 && $codigo == $codigoOrig
             ) {
-                escribirLog($idLog . ' -- El pedido con ID ' . $pedido . ' es válido y se ha registrado correctamente.', $logActivo);
+                escribirLog($idLog . ' -- El pedido con ID ' . $pedido . ' es válido y se ha registrado correctamente.', $this->logActivo);
                 $valido = true;
             } else {
-                escribirLog($idLog . ' -- Parámetros incorrectos.', $logActivo);
+                escribirLog($idLog . ' -- Parámetros incorrectos.', $this->logActivo);
                 if (!checkImporte($total)) {
-                    escribirLog($idLog . ' -- Formato de importe incorrecto.', $logActivo);
+                    escribirLog($idLog . ' -- Formato de importe incorrecto.', $this->logActivo);
                 }
                 if (!checkPedidoNum($pedido)) {
-                    escribirLog($idLog . ' -- Formato de nº de pedido incorrecto.', $logActivo);
+                    escribirLog($idLog . ' -- Formato de nº de pedido incorrecto.', $this->logActivo);
                 }
                 if (!checkFuc($codigo)) {
-                    escribirLog($idLog . ' -- Formato de FUC incorrecto.', $logActivo);
+                    escribirLog($idLog . ' -- Formato de FUC incorrecto.', $this->logActivo);
                 }
                 if (!checkMoneda($moneda)) {
-                    escribirLog($idLog . ' -- Formato de moneda incorrecto.', $logActivo);
+                    escribirLog($idLog . ' -- Formato de moneda incorrecto.', $this->logActivo);
                 }
                 if (!checkRespuesta($respuesta)) {
-                    escribirLog($idLog . ' -- Formato de respuesta incorrecto.', $logActivo);
+                    escribirLog($idLog . ' -- Formato de respuesta incorrecto.', $this->logActivo);
                 }
                 if (!checkFirma($firma_remota)) {
-                    escribirLog($idLog . ' -- Formato de firma incorrecto.', $logActivo);
+                    escribirLog($idLog . ' -- Formato de firma incorrecto.', $this->logActivo);
                 }
-                escribirLog($idLog . ' -- El pedido con ID ' . $pedido . ' NO es válido.', $logActivo);
+                escribirLog($idLog . ' -- El pedido con ID ' . $pedido . ' NO es válido.', $this->logActivo);
                 $valido = false;
             }
 
             if ($firma_local != $firma_remota || false === $valido) {
                 //El proceso no puede ser completado, error de autenticación
-                escribirLog($idLog . ' -- La firma no es correcta.', $logActivo);
+                escribirLog($idLog . ' -- La firma no es correcta.', $this->logActivo);
                 $_SESSION['cart']->reset(true);
                 zen_redirect(zen_href_link(FILENAME_LOGOFF, 'error_message=ERROR DE FIRMA', 'NONSSL', true, false));
             }
@@ -426,16 +552,16 @@ class bizum
             } else {
                 if (!$this->mantener_pedido_ante_error_pago) {
                     $_SESSION['cart']->reset(true);
-                    escribirLog($idLog . ' -- Error de respuesta. Vaciando carrito.', $logActivo);
+                    escribirLog($idLog . ' -- Error de respuesta. Vaciando carrito.', $this->logActivo);
                     zen_redirect(zen_href_link(FILENAME_LOGOFF, 'error_message=ERROR DE RESPUESTA', 'NONSSL', true, false));
                 } else {
-                    escribirLog($idLog . ' -- Error de respuesta. Manteniendo carrito.', $logActivo);
+                    escribirLog($idLog . ' -- Error de respuesta. Manteniendo carrito.', $this->logActivo);
                     zen_redirect(zen_href_link(FILENAME_CHECKOUT, 'error_message=ERROR DE RESPUESTA', 'NONSSL', true, false));
                 }
             }
         } else {
             //Transacción denegada
-            escribirLog($idLog . ' -- Error. Hacking atempt!', $logActivo);
+            escribirLog($idLog . ' -- Error. Hacking atempt!', $this->logActivo);
             die ('Hacking atempt!');
             exit;
         }
@@ -543,6 +669,9 @@ class bizum
         $db->Execute(
             "INSERT INTO " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function,date_added) VALUES ('Log activo', 'MODULE_PAYMENT_BIZUM_LOG', 'no', '¿Crear trazas de log?', '6', '4','zen_cfg_select_option(array(\'si\', \'no\'), ',  now())"
         );
+
+        //allow an observer to update the constants with site-specific values
+        $this->notify('NOTIFY_PAYMENT_BIZUM_POST_INSTALL', $this->keys());
 
         return '';
     }

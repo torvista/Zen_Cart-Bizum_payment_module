@@ -24,7 +24,7 @@ declare(strict_types=1);
 */
 
 if(!class_exists('RedsysAPI')) {
-	require_once('includes/modules/payment/apiRedsys/apiRedsysFinal.php');
+	require_once('includes/modules/payment/redsys/apiRedsys/apiRedsysFinal.php');
 }
 
 if (!empty( $_POST ) ) {//URL DE RESP. ONLINE
